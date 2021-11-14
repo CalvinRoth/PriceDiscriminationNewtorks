@@ -100,29 +100,36 @@ def getGap(A, test, rho, a, c):
 
 
 
-# Gaps applying price vector of guesses to G
-def averageGapReverse(A,test, rho, a,c):
+# Gaps applying price vector of guesses to true graph G
+def getGapRev(A,test, rho, a,c):
     optimalVector = priceVector(test, rho, a,c)
     profitWithGuessV = applyPriceVector(A, optimalVector, rho, a, c)
     trueProfit = applyPriceVector(A, priceVector(A, rho,a,c), rho, a, c)
     return trueProfit - profitWithGuessV
 ### AHHHHHHH
 
-
+# Applying the true optimal profit vector to guesses
 def getGaps(n, p, rho, a, c, i, results, n_trials):
     A, G = makeERGraph(n,p)
-    print(n, p)
     results[i] = np.average( [getGap(A, makeSimilarGraph(G), rho, a, c) for j in range(n_trials)])
-    print("Done,", i)
     return i
 
+def getGapsReverse(n,p,rho, a,c, i, results, n_trials):
+    A,G = makeERGraph(n,p)
+    results[i] = np.average( [getGapRev(A, makeSimilarGraph(G), rho, a,c) for j in range(n_trials)])
+    return i
 
+# Here we apply the average optimal price vector of the guesses to the true graph G
+# I get a warning about discarding complex values, values are never complex for this problem
 def getAverageGap(n, p, rho, a, c, i,  results, n_trials):
     A, G = makeERGraph(n,p)
     n = A.shape[0]
     trueProfit = applyPriceVector(A, priceVector(A, rho, a,c), rho, a, c)
+    # the average vector initilized with sample size of 1
     averageV = priceVector(makeSimilarGraph(G), rho, a,c)
-    for i in range(n_trials-1):
+    # And another n_trials-1 trials
+    for j in range(n_trials-1):
         averageV += priceVector(makeSimilarGraph(G), rho, a, c)
-    profit = applyPriceVector(A, (1/n_trials) * trueProfit, rho, a, c)
-    return trueProfit-profit
+    averageV /= n_trials # Scaling
+    profit = applyPriceVector(A, averageV, rho, a, c)
+    results[i] = trueProfit - profit
