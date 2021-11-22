@@ -4,7 +4,7 @@ import networkx as nx
 import scipy
 import matplotlib.pyplot as plt
 from scipy.stats import chi2_contingency 
-
+import multiprocessing as mp
 
 
 # #  Prelimaries 
@@ -109,18 +109,23 @@ def getGapRev(A,test, rho, a,c):
 ### AHHHHHHH
 
 # Applying the true optimal profit vector to guesses
+# Currently not using because it seems backwards of what I want
 def getGaps(n, p, rho, a, c, i, results, n_trials):
     A, G = makeERGraph(n,p)
     results[i] = np.average( [getGap(A, makeSimilarGraph(G), rho, a, c) for j in range(n_trials)])
     return i
 
+# Apply the price vector that each guess produces to the true graph and take average.
 def getGapsReverse(n,p,rho, a,c, i, results, n_trials):
     A,G = makeERGraph(n,p)
     results[i] = np.average( [getGapRev(A, makeSimilarGraph(G), rho, a,c) for j in range(n_trials)])
     return i
 
 # Here we apply the average optimal price vector of the guesses to the true graph G
-# I get a warning about discarding complex values, values are never complex for this problem
+# I get a warning about discarding complex values, values should never complex for this problem
+# and when I check they are all +0i so ?
+
+
 def getAverageGap(n, p, rho, a, c, i,  results, n_trials):
     A, G = makeERGraph(n,p)
     n = A.shape[0]
@@ -132,4 +137,19 @@ def getAverageGap(n, p, rho, a, c, i,  results, n_trials):
         averageV += priceVector(makeSimilarGraph(G), rho, a, c)
     averageV /= n_trials # Scaling
     profit = applyPriceVector(A, averageV, rho, a, c)
-    results[i] = trueProfit - profit
+    results[i] = np.real(trueProfit - profit)
+
+
+
+def fractionalGap(n,p, rho, a, c, i, results, n_trials):
+    A, G = makeERGraph(n, p)
+    n = A.shape[0]
+    trueProfit = np.real(applyPriceVector(A, priceVector(A, rho, a, c), rho, a, c))
+    # the average vector initilized with sample size of 1
+    averageV = priceVector(makeSimilarGraph(G), rho, a, c)
+    # And another n_trials-1 trials
+    for j in range(n_trials - 1):
+        averageV += priceVector(makeSimilarGraph(G), rho, a, c)
+    averageV /= n_trials  # Scaling
+    profit = np.real(applyPriceVector(A, averageV, rho, a, c))
+    results[i] = trueProfit/profit
