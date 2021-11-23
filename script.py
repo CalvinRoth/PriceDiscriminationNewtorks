@@ -8,7 +8,7 @@ if __name__ == '__main__':
         timer.start()
         # Paramters
         steps =10
-        n = 500
+        n = 2500
         n_delta = (n-400)/steps
         n_range = [ int(400+ i*n_delta) for i in range(0,steps)]
         p0 = 0.5/n
@@ -22,8 +22,8 @@ if __name__ == '__main__':
         c = 2
         n_trials = 20
         n_trials_range = np.linspace(5,100, steps, dtype=int)
-
-        results = [ [0 for i in range(steps)] for j in range(5)]
+        outer_steps = 5
+        results = [ [0 for i in range(steps)] for j in range(outer_steps)]
         results1 = [0 for i in range(steps)]
         results2 = [0 for i in range(steps)]
         results3 = [0 for i in range(steps)]
@@ -41,13 +41,14 @@ if __name__ == '__main__':
         results4 = mp.Array("f", range(steps))
         jobs = [];
         for i in range(steps):
-                for j in range(5):
-                        currentParam5 = (n, p_range[i], rho, a, c, i, results[j], n_trials)
-                        fractionalGap(*currentParam5)
+                for j in range(outer_steps):
+                        currentParam4 = (n, p, rho, a, c, i, results[j], n_trials_range[i])
+                        getAverageGap(*currentParam4)
+                        #currentParam5 = (n, p_range[i], rho, a, c, i, results[j], n_trials)
+                        #fractionalGap(*currentParam5)
                 #currentParams1 = (n, p_range[i], rho, a, c, i, results1, n_trials)
                 #currentParams2 = (n_range[i], p_foo(i), rho, a, c, i, results2, n_trials)
                 #currentParams3 = (n_range[i], p_foo(i), rho, a, c, i, results3, n_trials)
-                #currentParam4 = (n , p, rho , a, c, i, results4, n_trials_range[i])
                 #gapTest1(*currentParams1)
                 #gapTest2(*currentParams2)
                 # #gaptest3(*currentparams3)
@@ -60,16 +61,16 @@ if __name__ == '__main__':
         #        job.join()
 
         timer.stop()
-        full_results = np.zeros((steps, 6))
-        full_results[:,0] = np.array(p_range)
-        for j in range(5):
+        full_results = np.zeros((steps, outer_steps+1))
+        full_results[:,0] = np.array(n_trials_range)
+        for j in range(outer_steps):
                 full_results[:,j+1] = np.array(results[j])
 
-        plt.title("Profit Gap vs N")
+        plt.title("Profit Gap vs Trials Ran")
         #plt.plot(full_results[:,0], full_results[:,2], label="Apply guess vector", color="green")
-        for j in range(5):
+        for j in range(outer_steps):
                 plt.plot(full_results[:,0], full_results[:,j+1], label="Trial "+str(j+1))
-        plt.xlabel("P-Value")
+        plt.xlabel("Trials Ran")
         plt.ylabel("Gap in profit")
         plt.legend()
         plt.show()

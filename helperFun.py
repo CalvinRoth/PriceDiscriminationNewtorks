@@ -153,3 +153,8 @@ def fractionalGap(n,p, rho, a, c, i, results, n_trials):
     averageV /= n_trials  # Scaling
     profit = np.real(applyPriceVector(A, averageV, rho, a, c))
     results[i] = trueProfit/profit
+
+# Get the variance of the price vectors
+def varianceVector(n, p, rho, a, c, i, results, n_trails):
+    return np.var([getGapRev(A, makeSimilarGraph(G), rho, a,c) for j in range(n_trials)])
+
