@@ -176,8 +176,8 @@ def fractionalRegret(A, v, n, rho, a, c):
     """
     discrim = optimalProfit(A, n, a, c, rho)  # Optimal profit
     # I have check and the formula for optimal profit does match applypricevector(A, pricevector(A,...), params)
-    appliedProf = applyPriceVector(A, v, rho, a, c)  # Profit at v
-    return 1 - (appliedProf / discrim)
+    appliedProf,v  = applyPriceVector(A, v, rho, a, c) # Profit at v
+    return 1 - (appliedProf / discrim) , v 
 
 
 
@@ -220,7 +220,7 @@ def getAverageGap(n, p, rho, a, c, i, results, n_trials):
     for j in range(n_trials - 1):
         averageV += priceVector(makeSimilarGraph(G), rho, a, c)
     averageV /= n_trials  # Scaling
-    profit = applyPriceVector(A, averageV, rho, a, c)
+    profit, v = applyPriceVector(A, averageV, rho, a, c)
     results[i] = np.real(trueProfit - profit)
 
 ```
@@ -271,6 +271,29 @@ def regretDistribution(n : int, p : float,  n_trials : int, rho : float, a : int
         
     return [res_par, res_seq], [valid_par/n_trials, valid_seq/n_trials]
 
+def regretAveragedVector(n : int, p : float,  n_trials : int, rho : float, a : int | float ,c : int | float):
+    results = np.zeros(n_trials)
+    A_true, G_true = makeERGraph(n, p)
+    trueP = optimalProfit(A_true,n, a, c, rho)
+    v_aver = np.zeros((n,1))
+    res_par = np.zeros((n_trials,))
+    res_seq = np.zeros((n_trials,))
+    valid_par = 0
+    valid_seq = 0    
+    for j in range(n_trials):
+        A_par, G_par = makeERGraph(n,p)
+        A_seq = makeSimilarGraph(G_true)
+        v_par = priceVector(A_par, rho, a, c)
+        v_seq = priceVector(A_seq, rho, a, c)
+        v_aver += v_seq
+        res_par[j],b0 = fractionalRegret(A_true, v_par, n, rho, a, c)
+        res_seq[j],b1 = fractionalRegret(A_true, v_seq, n, rho, a, c)
+        valid_par += b0
+        valid_seq += b1
+    v_aver /= n_trials
+    res_avg, b0 = fractionalRegret(A_true, v_aver, n, rho, a, c)
+    return [res_par, res_seq, res_avg], [valid_par/n_trials, valid_seq/n_trials]
+
 def walkDistribution(n : int, p : float,  n_trials : int, rho : float, a : int | float ,c : int | float,k : int):
     results = np.zeros(n_trials)
     res = np.zeros((n_trials,))
@@ -280,6 +303,35 @@ def walkDistribution(n : int, p : float,  n_trials : int, rho : float, a : int |
         v = priceVector(A_true, rho, a, c,k)
         res[j] = fractionalRegret(A_true, v, n, rho, a, c)[0]
     return res
+
+def rawProfitDistribution(n : int, p : float,  n_trials : int, rho : float, a : int | float ,c : int | float):
+    results = np.zeros(n_trials)
+    res_par = []
+    res_seq = []
+    A_true, G_true = makeERGraph(n, p)
+    for j in range(n_trials):
+        A_seq = makeSimilarGraph(G_true)
+        A_par, G_par = makeERGraph(n,p)
+        v_par = priceVector(A_par, rho, a, c)
+        v_seq = priceVector(A_seq, rho, a, c)
+        res_par.append(applyPriceVector(A_true, v_par, rho, a, c)[0])
+        res_seq.append(applyPriceVector(A_true, v_seq, rho, a, c)[0])
+    return res_par, res_seq
+
+def priceVectorDifference(n : int, p : float,  n_trials : int, rho : float, a : int | float ,c : int | float):
+    res_par = np.zeros(n_trials)
+    res_seq = np.zeros(n_trials)
+    A_true, G_true = makeERGraph(n, p)
+    v_tre = priceVector(A_true, rho, a, c)
+    for j in range(n_trials):
+        A_par, G_par = makeERGraph(n,p)
+        v_par = priceVector(A_par, rho, a, c)
+        res_par[j] = np.linalg.norm(v_tre - v_par)
+        A_seq = makeSimilarGraph(G_true)
+        v_seq = priceVector(A_seq, rho, a, c)
+        res_seq[j] = np.linalg.norm(v_tre - v_seq)
+    return res_par, res_seq
+
 
 ```
 
@@ -307,11 +359,11 @@ print("Same Parameter ratio", ratio_par), print("Same Sequence ratio", ratio_seq
 ```
 
     Infinity Norm
-    Same Parameter var 7.933976166720137
-    Same Sequence var 0.0002606741040087665
-    Same Parameter mean 265.15448143188024
-    Same Sequence mean 284.4032453002981
-    Same Parameter ratio 0.96
+    Same Parameter var 9.291069202738829
+    Same Sequence var 0.0018989778099914433
+    Same Parameter mean 271.4297942750156
+    Same Sequence mean 290.4306793163761
+    Same Parameter ratio 1.0
     Same Sequence ratio 1.0
 
 
@@ -337,17 +389,17 @@ a = 5
 c = 4
 [res_par, res_seq], [ratio_par, ratio_seq] = profitDistribution(n,p,n_trials,  rho, a, c)
 [regret_par, regret_seq] = regretDistribution(n,p,n_trials,  rho, a, c)
-print("Infinity Norm")
+print("Frob Norm")
 print("Same Parameter var", np.var(res_par)), print("Same Sequence var", np.var(res_seq))
 print("Same Parameter mean", np.mean(res_par)), print("Same Sequence mean", np.mean(res_seq))
 print("Same Parameter ratio", ratio_par), print("Same Sequence ratio", ratio_seq)
 ```
 
-    Infinity Norm
-    Same Parameter var 5.693779946153654e-05
-    Same Sequence var 3.157721105772635e-09
-    Same Parameter mean 198.09179454896
-    Same Sequence mean 198.31363155686822
+    Frob Norm
+    Same Parameter var 3.925334292235542e-05
+    Same Sequence var 2.6818512033314854e-09
+    Same Parameter mean 198.02557823720988
+    Same Sequence mean 198.26023799599187
     Same Parameter ratio 1.0
     Same Sequence ratio 1.0
 
@@ -372,19 +424,23 @@ rho = 0.9
 a = 5
 c = 4
 [res_par, res_seq], [ratio_par, ratio_seq] = profitDistribution(n,p,n_trials,  rho, a, c)
-[regret_par, regret_seq] = regretDistribution(n,p,n_trials,  rho, a, c)
+[regret_par, regret_seq], [ratio_par, ratio_seq] = regretDistribution(n,p,n_trials,  rho, a, c)
 print("One Norm")
 print("Same Parameter var", np.var(res_par)), print("Same Sequence var", np.var(res_seq))
 print("Same Parameter mean", np.mean(res_par)), print("Same Sequence mean", np.mean(res_seq))
+print("Averager Regret", np.mean(regret_par), np.mean(regret_seq))
+print("Variance Regret", np.var(regret_par), np.var(regret_seq))
 print("Same Parameter ratio", ratio_par), print("Same Sequence ratio", ratio_seq)
 ```
 
     One Norm
-    Same Parameter var 12.830250183054028
-    Same Sequence var 0.00010939270473722128
-    Same Parameter mean 257.6831732487298
-    Same Sequence mean 275.913781629323
-    Same Parameter ratio 1.0
+    Same Parameter var 7.747737707799607
+    Same Sequence var 0.0008467498343761633
+    Same Parameter mean 288.24801976446366
+    Same Sequence mean 313.1342219188665
+    Averager Regret 0.0699749907401194 0.0014569824145602838
+    Variance Regret 8.503541730745598e-05 2.8313405928341824e-09
+    Same Parameter ratio 0.98
     Same Sequence ratio 1.0
 
 
@@ -491,6 +547,8 @@ def centralty(A: np.matrix, rho: float, alpha, k=None) -> np.matrix:
 
 
 ```python
+def specNorm(A: np.matrix) -> float:
+    return lin.norm(A, ord=1)
 n = 1500
 p = np.sqrt(np.log(n))/n
 n_trials = 50
@@ -507,6 +565,11 @@ v = walkDistribution(n, p, n_trials, rho, a, c,k)
 print("k is ", k)
 print("Mean Loss", np.mean(v))
 print("Variance", np.var(v))
+k = 10
+v = walkDistribution(n, p, n_trials, rho, a, c,k)
+print("k is ", k)
+print("Mean Loss", np.mean(v))
+print("Variance", np.var(v))
 k = None
 v = walkDistribution(n, p, n_trials, rho, a, c,k)
 print("k is ", k)
@@ -515,16 +578,244 @@ print("Variance", np.var(v))
 ```
 
     k is  1
-    Mean Loss 0.017556982847047202
-    Variance 6.635231756986075e-06
+    Mean Loss 0.01746446147655772
+    Variance 1.0967900485154999e-05
     k is  2
-    Mean Loss 0.017339977211125745
-    Variance 6.951887580322704e-06
+    Mean Loss 0.017020365282892632
+    Variance 9.143450750473874e-06
+    k is  10
+    Mean Loss 0.01738392151320594
+    Variance 1.0349277946567174e-05
     k is  None
-    Mean Loss 4.4408920985006264e-17
-    Variance 9.762153702110021e-32
+    Mean Loss -6.88338275267597e-17
+    Variance 1.2616351064812794e-31
 
 
-As we see there is very little advanage in increasing the step size and as a ratio a sizable tighening of variance 
+As we see there is very little advanage in increasing the step size and as a ratio a sizable tighening of variance. Also notice when k = None the result is essentially 0(it should be exactly 0 with perfect arithemtic)
+
+## Regret as a function of N
 
 
+
+```python
+def specNorm(A: np.matrix) -> float:
+    return lin.norm(A, ord=1)
+
+vars_par = []
+vars_seq = []
+regrets_par = []
+regrets_seq = []
+ns = [100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]
+for n in ns:
+    print("n is ", n)
+    p = np.sqrt(np.log(n))/n
+    n_trials = 15
+    rho = 0.9
+    a = 5
+    c = 4
+    [res_par, res_seq], [ratio_par, ratio_seq] = profitDistribution(n,p,n_trials,  rho, a, c)
+    [regret_par, regret_seq], [ratio_par, ratio_seq] = regretDistribution(n,p,n_trials,  rho, a, c)
+    vars_par.append(np.var(res_par))
+    vars_seq.append(np.var(res_seq))
+    regrets_par.append(np.mean(regret_par))
+    regrets_seq.append(np.mean(regret_seq))
+
+
+```
+
+    n is  100
+    n is  500
+    n is  1000
+    n is  1500
+    n is  2000
+    n is  2500
+    n is  3000
+    n is  3500
+    n is  4000
+
+
+
+```python
+print("Profit Distribution", np.mean(res_par), np.mean(res_seq))
+
+```
+
+    Profit Distribution 712.6312929732351 757.7662875601454
+
+
+
+```python
+plt.plot(ns, vars_par, label="Par")
+plt.plot(ns, vars_seq, label="Seq")
+plt.legend()
+plt.xlabel("n")
+plt.ylabel("Variance")
+plt.title("Variance of Profit")
+plt.show()
+plt.plot(ns, regrets_par, label="Par")
+plt.plot(ns, regrets_seq, label="Seq")
+plt.xlabel("n")
+plt.ylabel("Mean Regret")
+plt.title("Mean Regret of Profit")
+plt.legend()
+plt.show()
+```
+
+
+    
+![png](classProject_files/classProject_26_0.png)
+    
+
+
+
+    
+![png](classProject_files/classProject_26_1.png)
+    
+
+
+
+```python
+def specNorm(A: np.matrix) -> float:
+    return lin.norm(A, ord=1)
+
+vars_par = []
+vars_seq = []
+regrets_par = []
+regrets_seq = []
+n = 2000
+p0 = 1.1/n
+p1 = np.log(n)/n
+steps = 20
+ps = np.linspace(p0, p1, steps)
+for p in ps:
+    n_trials = 15
+    rho = 0.9
+    a = 5
+    c = 4
+    [res_par, res_seq], [ratio_par, ratio_seq] = profitDistribution(n,p,n_trials,  rho, a, c)
+    [regret_par, regret_seq], [ratio_par, ratio_seq] = regretDistribution(n,p,n_trials,  rho, a, c)
+    vars_par.append(np.var(res_par))
+    vars_seq.append(np.var(res_seq))
+    regrets_par.append(np.mean(regret_par))
+    regrets_seq.append(np.mean(regret_seq))
+
+
+```
+
+
+```python
+plt.plot(ps, vars_par, label="Par")
+plt.plot(ps, vars_seq, label="Seq")
+plt.legend()
+plt.xlabel("p")
+plt.ylabel("Variance")
+plt.title("Variance of Profit")
+plt.show()
+plt.plot(ps, regrets_par, label="Par")
+plt.plot(ps, regrets_seq, label="Seq")
+plt.xlabel("p")
+plt.ylabel("Mean Regret")
+plt.title("Mean Regret of Profit")
+plt.legend()
+plt.show()
+```
+
+
+    
+![png](classProject_files/classProject_28_0.png)
+    
+
+
+
+    
+![png](classProject_files/classProject_28_1.png)
+    
+
+
+
+```python
+n = 1000
+p = np.sqrt(np.log(n))/n
+n_trials = 50
+[results_par, results_seq] = rawProfitDistribution(n,p, n_trials, rho, a, c);
+plt.hist(results_par, bins=50, label="Par")
+plt.hist(results_seq, bins=50, label="Seq")
+plt.legend()
+plt.xlabel("Profit")
+plt.ylabel("Frequency")
+plt.title("Profit Distribution")
+plt.show()
+```
+
+
+    
+![png](classProject_files/classProject_29_0.png)
+    
+
+
+
+```python
+print("Mean Profit", np.mean(results_par))
+print("Mean Profit", np.mean(results_seq))
+print("Variance", np.var(results_par))
+print("Variance", np.var(results_seq))
+
+```
+
+    Mean Profit 183.78468060728213
+    Mean Profit 199.82432669957896
+    Variance 5.7510270018762
+    Variance 0.00029593269283792803
+
+
+
+```python
+n = 1000
+p = np.sqrt(np.log(n))/n
+n_trials = 50
+[results_par, results_seq] = priceVectorDifference(n,p, n_trials, rho, a, c);
+
+```
+
+
+```python
+print("Mean Price Vector Difference", np.mean(results_par))
+print("Mean Price Vector Difference", np.mean(results_seq))
+print("Variance", np.var(results_par))
+print("Variance", np.var(results_seq))
+```
+
+    Mean Price Vector Difference 4.760458911230341
+    Mean Price Vector Difference 0.43553673319737285
+    Variance 0.15742519950985076
+    Variance 0.0005375096494215401
+
+
+
+```python
+n = 2000
+p = np.sqrt(np.log(n))/n
+n_trials = 50
+[par,seq, avg], [ratio_par, ratio_seq] = regretAveragedVector(n,p, n_trials, rho, a, c);
+```
+
+
+```python
+print("Regret Par", np.mean(par))
+print("Regret Seq", np.mean(seq))
+print("Regret Avg", np.mean(avg))
+print("Variance", np.var(par))
+print("Variance", np.var(seq))
+```
+
+    Regret Par 0.07197218595210574
+    Regret Seq 0.0020440751845805893
+    Regret Avg 0.0010295615776492184
+    Variance 7.327854820786547e-05
+    Variance 2.472165606250833e-09
+
+
+
+```python
+
+```
