@@ -1,0 +1,95 @@
+% Created 2021-12-12 Sun 15:49
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Calvin Roth}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={Calvin Roth},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 27.2 (Org mode 9.5)},
+ pdflang={English}}
+\begin{document}
+
+\newcommand{\pr}{$\mathbb{Pr}$}
+
+\newcommand{\ppr}{\mathbb{P}\mathbb{r}}
+
+\section{Setup}
+Fix G, a directed erdos-renyi graph, let $Dom_{G}$ be the set of graphs that have the same degree sequence as G. Typically, we will use H to be a member of this set. Additionally, let $p(H)$ be profit vector of H. Throughtout this analysis all parameters are fixed.
+\pr
+\textbf{Primary Questions}
+\begin{enumerate}
+  \item What is $\| H + H^{T}\|$(What norm is the right norm is a good question) \\
+  \item Let q(H) be an altered price vector, where we fix the norms terms. What is the distribution of q(H) \\
+  \item What is probability distribution of these price vectors in the doman H. \\
+\end{enumerate}
+
+We want to resolve the question of what is $Pr[v(H)_{i} = k]$
+\begin{align*}
+  \ppr [v(H)_{i} = ] &= \ppr [ \frac{a-c}{2} + \frac{a-c}{2} \frac{\rho}{\|H+H^{T}} K(H+H^{T}, \frac{\rho}{\|H+H^{T}\|}) = k ]\\
+  &= \ppr [\frac{1}{\|H+H^{T}\|} K(H^{T}+H, \frac{\rho}{\|H+H^{T}}) = \underbrace{( \frac{2}{\rho(a-c)} [k - \frac{a-c}{2}] )}_{k'}]
+\end{align*}
+
+\subsection{Number of kth neighbors}
+We will define two generating functions.
+
+The first will be $g_{0}(z) = \sum_{k=0} p_{k} z^{k}$ where $p_{k}$ is the probabality of a given node having degree k. We know that $p_{k} \approx \frac{e^{-\lambda} \lambda^{k}}{k!}$ where $\lambda = (n-1)p$. Therefore $g_{0}(z) = \sum_{k=0} \frac{e^{-\lambda}\lambda^{k}}{k!} z^{k} = e^{-\lambda} e^{z\lambda}$.
+
+The next generating function will be of the distribution of the degree size of a neighboring vertices.  We analyzed this in networks class. We will call if $g_{1} = (z)$ and the probability distribution of this neighbor $p_{k}^{(2)}$. We have
+\begin{align*}
+  g_{1}(z) &= \sum_{k=0} p_{k}^{(k)} z^{k} \\
+       &= \sum_{k=0} \frac{k p_{k}}{E[d]} z^{k} \\
+       &= \frac{1}{E[d]} \sum_{k=0} k p_{k} z^{k} \\
+       &= \frac{1}{E[d]}  z D_{z} \sum_{k=0} p_{k} z^{k}\\
+       &= \frac{1}{E[d]} z D_{z} (e^{-\lambda} e^{z\lambda}) \\
+       &= \frac{z e^{-\lambda} \lambda e^{z\lambda}}{E[d]}
+\end{align*}
+
+To see why these are helpful, we will now derive the size of 2 distance neighbors from a node which we will call $d_{2}$.
+
+\begin{align*}
+  g_{2}(k) &= \sum p^{(2)}_{m} * z^{m} \underbrace{P_{2}(k|m)}_{\text{Distribution of 2 neighbors given starting node had degree m}} \\
+           &= \sum_{m} p^{(2)}_{m} \left( \sum_{x_{1} + x_{2} + \cdots + x_{m} =k } \prod_{j} Pr[q_{x_{j}}]  \right) \\
+           &= \sum_{m} p^{(2)}_{m} {(\sum q_{i} z^{i})}^{m} \\
+           &= \sum_{m} p^{(2)}_{m} (d_{1}(z))^{m} \\
+  &= g_{0}(g_{1}(z))
+\end{align*}
+
+To make this transition clear, consider what $(\sum_{i=0}^{\infty} q_{i} z^{i})(\sum_{i=0}^{\infty} q_{i} z^{i})$ organized by terms of z. The term of $z^{k}$ will have coefficient $(q_{0}q_{k} + q_{1}q_{k-1}+\cdots + q_{k-1}q_{1} + q_{k}q_{0} ) = \sum_{i+j=k} q_{i}q_{j}$.
+
+For us this is interesting because $g_{0}(z)$ is completely fixed by the true graph G(or said alternatively is exactly the same for all the H graphs with the same degree sequence) but $g_{1}$ was not fixed directly by H. $d_{1}$ is a random function dependent on the graph it is based on. I'm not sure how this $g_{1}$ correlates with the first degree information which we fixed. Importantly, is the $g_{1}$ functions the same for our graphs vs all erdos-renyi graphs with the same n and p or does this also depend indirectly on the information we fixed. Ideally it is the first case and if so we would have shown that walk sizes are a function of the true graph's information applied to a random variable which if things are nice only depends on n and p.
+
+We can continue this for higher distance walks. Now we will use $P_{3}(k|m)$ to be the probability that a node has k 3 distance given it has m 2-distance neighbors.  The three step generating function, $g_{3}(z)$, can be expressed as
+\begin{align*}
+  g_{3}(z) &= \sum_{k} \sum_{m} p^{2}_{m}  P_{3} (k|m) z^{k} \\
+           &= \sum_{m} p^{2}_{m} \sum_{x_{1} + x_{2}+\cdots x_{m}=k} z^{k} \prod_{j}^{m} Pr[q_{x_{j}}] \\
+           &= \sum_{m} p^{2}_{m} g_{1} (z)^{m} \\
+  &= g_{2} ( g_{1} ( z)) = g_{0} ( g_{1} ( g_{1} ( z)))
+\end{align*}
+
+In general, the generating function representing the walks of length $\ell$ is $g_{0} ( g_{1}^{\ell-1} ( z))$
+
+
+These have been very helpful and contains much of this analysis.
+https://people.cs.clemson.edu/~isafro/ns14/l15.pdf
+https://static.squarespace.com/static/5436e695e4b07f1e91b30155/t/5445263ee4b0d3d410795e1f/1413817918272/random-graphs-with-arbitrary-degree-distributions-and-their-applications.pdf
+
+\section{Norms}
+Currently unsure how I can bound the norms more tightly than what was done in the price discrimination paper.
+\end{document}
